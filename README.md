@@ -1,14 +1,15 @@
-# M-Hands: Geometrically Invariant Real-Time Hand Gesture Interaction Framework
+# M-Hands: Geometrically Invariant Real-Time Hand Gesture Interaction Framework & Jedi 2D Physics Sandbox
 
 [![Python 3.10](https://img.shields.io/badge/Python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
 [![MediaPipe](https://img.shields.io/badge/MediaPipe-0.10.14-green.svg)](https://developers.google.com/mediapipe)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.9.0-red.svg)](https://opencv.org/)
 [![scikit-learn](https://img.shields.io/badge/scikit--learn-1.4.2-orange.svg)](https://scikit-learn.org/)
-[![Tests](https://img.shields.io/badge/Tests-13%20Passed%20(100%25)-brightgreen.svg)]()
+[![Physics Engine](https://img.shields.io/badge/Physics-Chipmunk2D%20%7C%20Pymunk-informational.svg)](http://www.pymunk.org/)
+[![Tests](https://img.shields.io/badge/Tests-32%20Passed%20(100%25)-brightgreen.svg)]()
 [![Throughput](https://img.shields.io/badge/FPS-52.0%20to%2061.0%20FPS-blueviolet.svg)]()
 [![License](https://img.shields.io/badge/License-Apache%202.0-lightgrey.svg)]()
 
-> **Production-grade, ultra-low-latency contactless interaction system engineered with an 8-dimensional geometrically invariant feature manifold, adaptive 1 Euro temporal signal damping, deterministic hysteresis state machine, and demographic/illumination robustness.**
+> **Production-grade, ultra-low-latency contactless interaction system engineered with an 8-dimensional geometrically invariant feature manifold, adaptive 1 Euro temporal signal damping, deterministic hysteresis state machine, and a real-time telekinetic 2D physics sandbox.**
 
 ---
 
@@ -17,11 +18,12 @@
 Standard monocular hand keypoint pipelines (e.g., MediaPipe Hands) predict twenty-one discrete 3D anatomical landmarks, yielding a 63-dimensional coordinate array $\mathbf{x}_{\text{raw}} \in \mathbb{R}^{63}$. While statistical classifiers trained on raw Cartesian coordinates achieve near-perfect same-session accuracy, they internalize non-generalizable spatial heuristics (e.g., elevation in camera frame, sensor distance, subject seating position). Under real-world cross-session conditions—where lighting shifts, distances vary, or camera perspectives tilt—classifiers trained on raw coordinates suffer severe **covariate shift**, degrading by **upwards of 40% to 70% in accuracy**.
 
 **M-Hands** resolves this operational bottleneck through:
-1. **An 8-Dimensional Geometrically Invariant Manifold ($\mathbb{R}^8$)**: Completely eliminates translation and global scale dependency while providing intrinsic angular invariance across diverse sensor distances and postures.
+1. **An 8-Dimensional Geometrically Invariant Manifold ($\mathbb{R}^8$)**: Completely eliminates translation and global scale dependency while providing intrinsic angular invariance across diverse sensor distances, hand morphologies, and postures.
 2. **Adaptive 1 Euro Signal Damping**: Suppresses high-frequency monocular regression jitter during static poses while bypassing phase lag during rapid transitions. Includes a specialized **Tremor Suppression Mode** for motor conditions (e.g., Parkinsonian or essential tremors).
 3. **Deterministic Interaction State Machine (FSM)**: Eliminates the "Midas Touch" problem via dual-threshold confidence hysteresis ($P \ge 0.85$ engage, $P < 0.40$ release) and temporal dwell integration ($t_{\text{dwell}} \ge 250$ ms).
 4. **Demographic & Biomechanical Inclusivity**: Incorporates adaptive $Y\text{CrCb} + \text{CLAHE}$ luminance equalization for high landmark retention across Fitzpatrick skin phototypes V and VI in dim lighting, and bilateral horizontal reflection for left-handed parity.
-5. **Decoupled Multi-Threaded Producer-Consumer Engine**: Drops stale frames, isolates I/O and inference, and sustains $\ge 52$–$60$ FPS at 720p resolution with sub-20 ms end-to-end latency.
+5. **Decoupled Multi-Threaded Producer-Consumer Engine**: Drops stale frames, isolates I/O and inference, and sustains $\ge 52$–$61$ FPS at 720p resolution with sub-20 ms end-to-end latency.
+6. **The "Jedi" 2D Telekinetic Physics Sandbox**: Transforms the monocular webcam into an interactive telekinetic chamber, coupling real human kinematics to rigid bodies, ragdolls, and granular fluids with variable-tension springs, universal gravity singularities, holographic on-screen HUDs, and plasma bisection cutting.
 
 ---
 
@@ -52,14 +54,16 @@ flowchart TD
         PROB --> FSM["Interaction State Machine<br/>Hysteresis + Dwell-Click Timing"]
     end
 
-    subgraph OutputAction ["5. Real-Time HUD & Event Dispatch"]
-        FSM --> EVT{"System State"}
-        EVT -->|Dwell Reached| CLK["CLICK_EXECUTE / Selection Event"]
-        EVT -->|Tracking| SLD["Continuous Spatial Slider Control"]
-        EVT -->|Confidence Drop| REL["RELEASE_EXECUTE"]
-        CLK --> HUD["Cyber-Medical HUD Visualizer<br/>(Zero UI Overhead, OpenCV Blit)"]
-        SLD --> HUD
-        REL --> HUD
+    subgraph JediSandbox ["5. Jedi Telekinetic Physics Sandbox (120 Hz)"]
+        PHI --> TK["Telekinetic Force Controller<br/>(Pinch Springs, Universal Gravity, Plasma Blade)"]
+        FSM --> TK
+        TK --> CHIP["Chipmunk2D / Pymunk Physics Space<br/>(Rigid Bodies, Constraints, Convex Polygon Slicing)"]
+        CHIP --> VIS["2D AR Visualizer<br/>(Glassmorphism, 21-Joint Skeleton, Holographic Guide)"]
+    end
+
+    subgraph OutputAction ["6. HUD Telemetry & Output Dispatch"]
+        VIS --> DISP["Interactive Screen Display /dev/video0 Blit"]
+        FSM --> HUD["Cyber-Medical HUD Visualizer"]
     end
 ```
 
@@ -158,8 +162,7 @@ Benchmarking was conducted on 720p ($1280 \times 720$) video input across 200 co
 
 ### 5.1 Adaptive 1 Euro Temporal Filter
 Suppresses high-frequency monocular landmark regression jitter while eliminating phase lag during fast movement:
-$$\hat{x}_k = \alpha x_k + (1 - \alpha) \hat{x}_{k-1}, \quad \alpha = \frac{1}{1 + \frac{1}{2\pi f_c T_e}}$$
-$$f_c = f_{c,\min} + \beta |\dot{\hat{x}}_k|$$
+$$\hat{x}_k = \alpha x_k + (1 - \alpha) \hat{x}_{k-1}, \quad \alpha = \frac{1}{1 + \frac{1}{2\pi f_c T_e}}, \quad f_c = f_{c,\min} + \beta |\dot{\hat{x}}_k|$$
 
 - **Interactive Mode**: $f_{c,\min} = 1.0\text{ Hz}$, $\beta = 0.007$, $d_{\text{cutoff}} = 1.0\text{ Hz}$.
 - **Tremor Suppression Mode**: $f_{c,\min} = 0.4\text{ Hz}$, $\beta = 0.002$. Dampens involuntary 4–7 Hz Parkinsonian or essential tremors without impeding intentional interface control.
@@ -172,35 +175,160 @@ Eliminates inadvertent triggering ("Midas Touch") via explicit interaction state
 - **`ACTION_RELEASED`**: Once confidence drops below $0.40$ for $\ge 150\text{ ms}$, releases action latch and resets to `IDLE`.
 
 ### 5.3 Continuous Spatial Slider Control
-When `Index_Point` is active, the system maps the filtered coordinate of the index fingertip ($\hat{\mathbf{p}}_8$) to a continuous scalar output $V \in [0.0, 100.0]\%$, enabling hands-free adjustment of audio volume, screen brightness, or surgical PACS slice scrubbing.
+When `Index_Point` is active, the system maps the filtered coordinate of the index fingertip ($\hat{\mathbf{p}}_8$) to a continuous scalar output $V \in [0.0, 100.0]\%$, enabling hands-free adjustment of audio volume, screen brightness, or medical PACS slice scrubbing.
 
-### 5.4 Dynamic 2-Second Anatomical Calibration
-At startup, the operator shows an open hand followed by a closed fist for 2 seconds. The pipeline dynamically registers min/max articulation bounds $\mathbf{\Theta}_{\min}, \mathbf{\Theta}_{\max}$ and normalizes joint ranges:
-$$\bar{\theta}_j = \frac{\theta_j - \theta_{j,\min}}{\theta_{j,\max} - \theta_{j,\min}}$$
-
-### 5.5 Demographic & Illumination Inclusivity
+### 5.4 Demographic & Illumination Inclusivity
 - **Luminance Normalization**: Converts frames to $Y\text{CrCb}$ space, applies Contrast Limited Adaptive Histogram Equalization (CLAHE, clip limit 2.0, $8 \times 8$ grid) strictly to the $Y$ luminance channel, and reconstructs RGB. Restores boundary gradients for darker skin tones (Fitzpatrick phototypes V & VI) in dim environments without chromatic distortion.
 - **Bilateral Symmetry**: Horizontally reflects left-handed landmarks ($\hat{x}_{\text{sym}} = 1.0 - x$), guaranteeing identical classification accuracy for left- and right-handed operators.
 
 ---
 
-## 6. Architecture & Module Reference
+## 6. The "Jedi" 2D Telekinetic Physics Sandbox
 
-The codebase is partitioned into modular subpackages isolating core mathematical operations from streaming I/O and UI rendering.
+Beyond traditional gesture menus, M-Hands includes an interactive telekinetic simulation chamber where physical rigid bodies, soft-body meshes, and particle fluids react directly to natural hand kinematics with zero perceptible input lag.
+
+```
+       [Natural Hand Kinematics]
+      /           |            \
+ [Pinch Aperture] [Flexion Angles] [Palm Orientation]
+       |                  |                |
+  (Variable Tension   (Kinetic Push /    (Deflector Shield /
+   Elastic Spring)     Gravity Pull)      Spatial Stasis)
+       \                  |                /
+        ▼                 ▼               ▼
+      [Chipmunk2D / Pymunk Physics Engine (120 Hz Substepped)]
+                          │
+   ┌──────────────────────┼──────────────────────┐
+   ▼                      ▼                      ▼
+[Rigid Body Castle]  [Ragdoll Dummies]  [Viscous Fluid Vats]
+```
+
+### 6.1 Telekinetic Powers & Kinematic Coupling
+
+1. **Holographic Operations Manual (`Thumbs-Up Posture`)**:
+   - **Kinematic Detection**: Evaluates invariant landmarks—all 4 non-thumb digits tightly curled ($\text{mean}(\phi_{1:5}) > 1.20$, each $\phi_i > 0.90$) with thumb extended straight ($\phi_0 < 0.70$) and elevated vertically ($(y_{\text{tip}} - y_{\text{mcp}}) / d_{\text{ref}} < -0.25$).
+   - **Intentional Dwell Filter**: Requires holding for $\ge 250\text{ ms}$ ($\sim 8$ frames) to summon the manual, preventing accidental flashes during hand transitions.
+   - **Immediate Zero-Lag Dismissal**: The exact frame the thumb is relaxed, tilted, or dropped, the manual immediately disappears ($0\text{ ms}$ delay).
+   - **Absent Hand Clearance**: Dropping hand out of camera FOV instantly resets manual visibility and all active grips.
+   - **Visuals**: Glowing golden beacon rings on the thumb tip, amber corner brackets, and frosted-glass dual-column HUD manual. Keyboard fallback: `'h'` or `'?'`.
+
+2. **Natural Human Pinch & Variable-Tension Elastic Grip**:
+   - **Biomechanical Decoupling**: Eliminates rigid multi-finger extension constraints, naturally supporting curled middle, ring, and pinky fingers ($\text{mean}(\phi_{1:5}) \approx 1.43$).
+   - **Dual-Threshold Release Hysteresis**: Latches grip at $r_{\text{aperture}} \le 0.45 \cdot d_{\text{ref}}$ (with generous $160\text{px}$ grab radius); maintains grip securely up to $0.58 \cdot d_{\text{ref}}$ during rapid arm movement; releases cleanly at $\ge 0.58 \cdot d_{\text{ref}}$.
+   - **Variable Spring Stiffness**: Modulates stiffness dynamically ($k = 300$ to $12,000\text{ N/m}$) with stress-vector color interpolation (Cyan $\to$ Amber $\to$ Crimson).
+
+3. **Momentum Flinging & Explosive Kinetic Shockwave ("Force Push")**:
+   - High-velocity wrist flick severs spring constraint, transferring raw human momentum ($v_{\text{body}} \mathrel{+}= 0.7 \cdot v_{\text{hand}}$) to fling blocks across the room.
+   - Snapping the hand into an Open Palm unleashes an expanding circular shockwave ripple ($440\text{px}$ radius) that blasts dynamic objects outward with 25% cinematic slow-motion time dilation.
+
+4. **Closed Fist Universal Gravitational Singularity ("Force Pull")**:
+   - Curling into a closed fist pulls **all** dynamic physical blocks across the entire chamber toward the palm center ($a \le 2400\text{ px/s}^2$).
+   - Close-proximity radial velocity damping ($160\text{px}$) and gentle vortex tangential swirl ($180\text{ px/s}$) create a stable, beautiful orbiting accretion disk around the fist without erratic slingshotting.
+   - Rendered with multi-layered pulsating magenta accretion rings and purple vortex swirls.
+
+5. **Dual-Hand Asymmetric Telekinesis (Deflector Shield & Spatial Stasis)**:
+   - **Right Hand**: Holding a stationary flat palm locks the physical universe in place via Spatial Stasis (Force Freeze), suspending falling projectiles mid-air.
+   - **Left Hand**: Open palm projects a luminous hexagonal Deflector Shield barrier that rebounds incoming debris.
+
+6. **Plasma Bisection Blade & Convex Polygon Slicing**:
+   - Projecting the Victory sign casts an emerald and white-hot laser beam along the index-middle vector.
+   - Slices convex polygons cleanly in two using Sutherland-Hodgman clipping, recomputing mass, moment of inertia, and centroid coordinates with bright orange spark particles.
+   - Protected against Chipmunk constraint aborts with strict Victory gating and a $0.35\text{s}$ slice cooldown.
+
+7. **Transparent AR Mode & 21-Joint Recognizable Hand Skeleton**:
+   - Semi-transparent glassmorphic physics bodies (`alpha = 0.65`) with vibrant neon borders allow real hands and the physical environment to remain visible behind pieces.
+   - Mirrored webcam feed (`cv2.flip(frame, 1)`) ensures natural 1:1 hand-eye coordination.
+   - High-contrast 21-joint skeleton with color-coded nodes (amber tips, cyan wrist root, emerald knuckles) and contextual state pill badges (`[RIGHT // GRAVITATIONAL SINGULARITY]`, `[RIGHT // ON-SCREEN GUIDE]`, `[RIGHT // TELEKINETIC GRIP]`, `[RIGHT // PLASMA CUTTER]`, `[RIGHT // DEFLECTOR SHIELD]`, `[RIGHT // READY]`).
+
+---
+
+## 7. Visual Showcase & Demonstration Video
+
+### 7.1 Photographic Feature Showcase
+
+| Gravitational Singularity (Closed Fist) | Holographic Operations Manual (Thumbs-Up) |
+| :---: | :---: |
+| ![Gravitational Singularity](assets/jedi_fist_gravity.png) | ![Holographic Guide](assets/jedi_thumbs_up_guide.png) |
+| *All blocks pulled into an accretion disk around the fist.* | *250ms dwell summon with instant zero-lag dismissal.* |
+
+| Transparent AR Live Camera Mode | Telekinetic Spring Grip & Reticle | Safe Plasma Bisection Blade |
+| :---: | :---: | :---: |
+| ![Transparent AR Skeleton](assets/jedi_ar_transparent_skeleton.png) | ![Telekinetic Grip](assets/jedi_pinch_grip_skeleton.png) | ![Plasma Cutter Safe](assets/jedi_laser_blade_safe.png) |
+| *21-joint skeleton visible behind blocks.* | *Variable tension spring with curled fingers.* | *Convex polygon slicing with spark bursts.* |
+
+### 7.2 Full 21-Second Cinematic Demonstration Video (H.264)
+
+Watch the complete demonstration showcasing all powers in sequence:
+
+[![Jedi Sandbox Demo Video](assets/jedi_force_push.png)](jedi_sandbox_demo_h264.mp4)
+
+> *Video file available at [`jedi_sandbox_demo_h264.mp4`](jedi_sandbox_demo_h264.mp4).*
+
+| Timestamp | Feature | Kinematic Trigger & Effect |
+| :--- | :--- | :--- |
+| **0:00 – 0:03** | **Holographic Manual** | Thumbs-Up pose summons frosted-glass operations guide. Relaxing hand immediately dismisses it with $0\text{ ms}$ delay. |
+| **0:04 – 0:06** | **Telekinetic Pinch Grip** | Natural pinch with curled fingers latches variable-tension spring onto arch keystone, swinging it like a wrecking ball. |
+| **0:07 – 0:10** | **Momentum Fling & Force Push** | Spring severed, transferring momentum to fling block into tower. Hand snaps open, unleashing $440\text{px}$ shockwave with 25% slo-mo. |
+| **0:11 – 0:14** | **Gravitational Singularity** | Closed Fist summons pulsating magenta accretion rings, pulling all dynamic blocks across chamber into an orbit around the fist. |
+| **0:15 – 0:16** | **Deflector Shield & Stasis** | Right hand flat palm freezes time mid-air; Left hand projects hexagonal Deflector Shield barrier repelling debris. |
+| **0:17 – 0:20** | **Plasma Bisection Blade** | Victory sign casts an emerald beam that cleanly bisects convex polygon blocks in two with orange sparks and time dilation. |
+
+---
+
+## 8. Interactive Toybox Environments & Controls
+
+### 8.1 Toybox Environments
+1. **Jenga Castle & Keystone Arch** (`Key 1`): Destructible masonry arches, structural columns, and domino towers under gravity load.
+2. **Articulated Ragdoll Arena** (`Key 2`): Multi-jointed humanoid test dummies with physical joint limits.
+3. **Granular Fluid Vat** (`Key 3`): 120+ viscous fluid particles with splash dynamics and paddle sweeps.
+4. **Zero-G Orbital Asteroids** (`Key 4`): Microgravity orbital celestial playground with satellites.
+5. **Seismic Truss Bridge** (`Key 5`): Pinned truss bridge spanning a chasm under rolling vehicular load.
+
+### 8.2 Gesture & Hotkey Reference Matrix
+
+| Gesture / Input | Control Target | Physical / Visual Outcome |
+| :--- | :--- | :--- |
+| **Natural Pinch** (Thumb + Index) | Variable Tension Spring | Latches nearest body ($r \le 160\text{px}$); tight pinch locks rigid, loose pinch swings like wrecking ball. |
+| **Pinch Release** ($r_{\text{ap}} \ge 0.58$) | Momentum Fling | Severs spring constraint and transfers hand velocity to projectile. |
+| **Closed Fist** | Universal Gravity Singularity | Attracts ALL dynamic blocks across chamber into orbiting accretion disk. |
+| **Thumbs-Up** (Hold $0.25\text{s}$) | Holographic Guide | Displays on-screen manual; relaxing hand immediately dismisses guide. |
+| **Open Palm Snap** | Kinetic Shockwave | Blasts nearby blocks outward with $440\text{px}$ ripple and $0.25\times$ slow-motion. |
+| **Flat Palm Hold** ($0.25\text{s}$) | Spatial Stasis | Freezes physical time and locks all body velocities mid-air. |
+| **Victory Sign** (Index + Middle) | Plasma Bisection Blade | High-energy laser beam cuts convex polygons in two with spark showers. |
+| **Left Open Palm** | Deflector Shield | Deploys hexagonal barrier that repels incoming dynamic debris. |
+| **Key `1` – `5`** | Environment Select | Loads Jenga Castle, Ragdolls, Fluid Vat, Zero-G, or Seismic Bridge. |
+| **Key `h` / `?`** | Toggle Manual | Keyboard fallback to toggle holographic operations manual on/off. |
+| **Key `a`** | AR Camera Toggle | Switches between transparent live webcam feed and dark holo-chamber. |
+| **Key `s`** | Slow-Motion Dilation | Manually triggers cinematic $0.2\times$ slow-motion for $2.5\text{s}$. |
+| **Key `r`** | Reset Simulation | Reloads current toybox environment in its initial state. |
+| **Key `p`** | HD Snapshot | Saves high-resolution timestamped PNG snapshot to disk. |
+| **Key `q` / `ESC`** | Exit Application | Shuts down physics engine, camera capture, and OpenCV windows cleanly. |
+
+---
+
+## 9. Architecture & Module Reference
+
+The codebase is organized into modular subpackages isolating mathematical kinematics, streaming I/O, physics simulations, and rendering.
 
 ```
 mhands/
-├── core/                  # Pure mathematical & signal processing logic
+├── core/                  # Mathematical foundations & signal processing
 │   ├── calibrator.py      # Dynamic anatomical range normalization
 │   ├── filters.py         # OneEuroFilter & MultiPointOneEuroFilter implementations
 │   ├── geometry.py        # Scale/translation/rotation-invariant vector extraction
 │   ├── preprocessor.py    # YCrCb+CLAHE illumination & bilateral hand mirroring
 │   └── state_machine.py   # InteractionStateMachine & GestureEvent dispatch
-├── pipeline/              # Real-time streaming & hardware interfaces
+├── pipeline/              # Real-time streaming & classification interfaces
 │   ├── classifier.py      # Scikit-learn Pipeline wrapper (StandardScaler + SVC)
 │   ├── landmarker.py      # MediaPipe HandLandmarker context manager wrapper
 │   ├── threaded_stream.py # Decoupled non-blocking I/O frame capture
 │   └── visualizer.py      # Low-overhead OpenCV HUD telemetry blitter
+├── sandbox/               # Jedi 2D Telekinetic Physics Engine
+│   ├── environments.py    # 5 destructible toyboxes (Castle, Ragdoll, Fluid, Zero-G, Bridge)
+│   ├── physics_space.py   # Pymunk 2D space wrapper with stasis, time dilation & queries
+│   ├── polygon_cutter.py  # Exact Sutherland-Hodgman convex polygon bisection engine
+│   ├── telekinesis.py     # Kinematic force controller (Springs, Gravity, Lasers, Dwell)
+│   └── visualizer_2d.py   # Transparent AR renderer, 21-joint skeleton & holographic guide
 ├── benchmark/             # Rigorous statistical validation suite
 │   ├── evaluator.py       # Four-cell cross-session evaluator
 │   ├── profiler.py        # Subsystem latency profiling utilities
@@ -208,7 +336,7 @@ mhands/
 └── data/                  # Data engineering & synthetic generation
     ├── collector.py       # Live interactive landmark collection utility
     ├── dataset.py         # Serialized dataset loader (.npz archive manager)
-    └── synthetic_generator.py # 3D rotation matrix perturbation generator
+    └── synthetic_generator.py # 3D rotation perturbation generator
 ```
 
 ### Key Class & API Exports
@@ -219,93 +347,20 @@ mhands/
 | `mhands.core.filters` | `MultiPointOneEuroFilter` | High-frequency jitter mitigation across all 21 joints simultaneously. |
 | `mhands.core.state_machine` | `InteractionStateMachine` | State tracking (`REST` $\to$ `DWELLING` $\to$ `TRIGGERED` $\to$ `RELEASED`). |
 | `mhands.core.preprocessor` | `AdaptiveIlluminationNormalizer` | Luminance equalized $Y\text{CrCb} + \text{CLAHE}$ pre-inference transform. |
-| `mhands.pipeline.threaded_stream` | `ThreadedCamera` | Non-blocking frame capture thread preventing pipeline frame drops. |
-| `mhands.pipeline.classifier` | `GestureClassifier` | Scikit-learn pipeline serialization, batch and single-sample inference. |
-| `mhands.pipeline.visualizer` | `HUDVisualizer` | Real-time visual telemetry, dwell progress circle, and feature histograms. |
+| `mhands.sandbox.telekinesis` | `TelekineticController` | Translates hand kinematics into springs, gravity, lasers, and guides. |
+| `mhands.sandbox.physics_space`| `PhysicsSpace` | Pymunk space wrapper with 120 Hz substepping, stasis, and slo-mo. |
+| `mhands.sandbox.polygon_cutter`| `slice_convex_polygon(poly, p1, p2)`| Sutherland-Hodgman convex polygon bisection with mass recomputation. |
+| `mhands.sandbox.visualizer_2d`| `SandboxVisualizer` | Transparent AR blitter, recognizable 21-joint skeleton, and guide HUD. |
 
 ---
 
-## 7. The "Jedi" 2D Telekinetic Physics Sandbox
+## 10. Installation & Quickstart
 
-Beyond traditional gesture menus, M-Hands includes an interactive telekinetic simulation chamber where physical rigid bodies, articulated ragdolls, and particle fluids react directly to natural hand kinematics with zero perceptible input lag.
-
-```
-       [Natural Hand Kinematics]
-      /           |            \
- [Pinch Aperture] [Flexion Angles] [Palm Orientation]
-       |                  |                |
-  (Variable Tension   (Kinetic Push /    (Angular Torque /
-   Elastic Spring)     Singularity Pull)  Rotational Weld)
-       \                  |                /
-        ▼                 ▼               ▼
-      [Chipmunk2D / Pymunk Physics Engine (120 Hz)]
-                          │
-   ┌──────────────────────┼──────────────────────┐
-   ▼                      ▼                      ▼
-[Rigid Body Castle]  [Ragdoll Dummies]  [Viscous Fluid Vats]
-```
-
-### 7.1 Telekinetic Capabilities & Kinematic Coupling
-- **Elastic Force Grip (Variable Tension Springs)**: Pinching the thumb and index finger ($r_{\text{aperture}} < 0.35$) latches a virtual damped spring onto the nearest rigid body. Gently closing tightens spring stiffness ($k \to 12,000\text{ N/m}$), snapping the object rigidly to the index fingertip, while keeping a looser pinch lets the object swing with momentum like a wrecking ball or yo-yo.
-- **True Momentum Flinging**: Opening the pinch instantly severs the constraint. The 1 Euro filter dynamic velocity coefficient ($\beta = 0.007$) bypasses low-pass filtering during rapid motion, so fast wrist flicks transfer raw human acceleration, hurling blocks across the screen.
-- **Area-of-Effect (AoE) Kinetic Shockwave ("Force Push")**: Snapping the hand from a curled posture into an open palm triggers an instantaneous radial blast wave, launching objects outward with expanding concentric refraction ripples.
-- **Gravitational Singularity ("Force Pull")**: Curling all five fingers into a closed fist activates an inward gravitational attractor at the palm's center, swirling debris and ragdolls into a dense orbiting cluster.
-- **Spatial Stasis ("Force Freeze")**: Holding a flat palm stationary across the 250 ms dwell threshold locks the local physical universe in place, freezing falling projectiles mid-air.
-- **Plasma Bisection Blade**: Projecting the Victory/Peace gesture casts a slicing energy beam that splits convex polygons along the cutting plane, dividing crates and beams in two with bright molten sparks!
-
-### 7.2 Interactive Toybox Environments
-1. **Jenga Castle & Keystone Arch** (`Key 1`): Destructible masonry arches, structural columns, and domino towers.
-2. **Articulated Ragdoll Arena** (`Key 2`): Multi-jointed humanoid test dummies with physical joint limits.
-3. **Granular Fluid Vat** (`Key 3`): 120+ viscous fluid particles with splash dynamics and hand paddle sweeps.
-4. **Zero-G Asteroids** (`Key 4`): Microgravity orbital celestial playground.
-5. **Seismic Bridge** (`Key 5`): Pinned truss bridge spanning a chasm under rolling vehicular load.
-
-![Jedi Force Push Shockwave](assets/jedi_force_push.png)
-
-```bash
-# Launch interactive Jedi sandbox on live webcam
-python scripts/run_jedi_sandbox.py --camera 0
-
-# Record 12-second high-definition demo video
-python scripts/record_jedi_demo.py --output jedi_sandbox_demo.mp4 --duration 12
-```
-
----
-
-## 8. Environment & Runtime Configuration
-
-Runtime behavior, model confidence thresholds, and telemetry levels can be configured via a `.env` file in the project root:
-
-```env
-# Runtime execution and telemetry flags
-MHANDS_LOG_LEVEL=INFO
-MHANDS_DEBUG_HUD=1
-MHANDS_USE_THREADED_STREAM=1
-
-# MediaPipe hardware acceleration and sensitivity
-MEDIAPIPE_MODEL_COMPLEXITY=1
-MEDIAPIPE_MIN_DETECTION_CONFIDENCE=0.75
-MEDIAPIPE_MIN_TRACKING_CONFIDENCE=0.75
-
-# State machine configuration
-MHANDS_DWELL_TIME_THRESHOLD_MS=250
-MHANDS_HYSTERESIS_COOLDOWN_MS=150
-
-# Performance profiling limits
-MHANDS_LATENCY_WARMUP_ITERATIONS=50
-MHANDS_BENCHMARK_ITERATIONS=200
-```
-
----
-
-## 8. Installation & Quickstart
-
-### 8.1 Environment Setup (Pinned Dependencies)
-Python 3.10 or 3.11 is required for complete compatibility with MediaPipe native extensions.
+### 10.1 Environment Setup (Python 3.10 / 3.11)
 
 ```bash
 # 1. Clone repository
-git clone https://github.com/your-username/M-hands.git
+git clone https://github.com/Alphacew/M-hands.git
 cd M-hands
 
 # 2. Initialize virtual environment using uv or standard venv
@@ -317,37 +372,40 @@ uv pip install -r requirements.txt
 uv pip install -e .
 ```
 
-### 8.2 Run Live Interactive Pipeline
-Launch the real-time recognition pipeline on your default webcam (`/dev/video0`):
+### 10.2 Launch Interactive Jedi 2D Sandbox (Webcam)
+```bash
+# Launch transparent AR mode on default webcam:
+python scripts/run_jedi_sandbox.py
+
+# Launch in Dark Holo-Chamber mode:
+python scripts/run_jedi_sandbox.py --chamber
+```
+
+### 10.3 Run Live Invariant Interaction Pipeline
 ```bash
 python scripts/run_live.py --camera 0
 ```
-**Interactive Keybindings**:
-- `'q'` or `ESC`: Exit pipeline
-- `'t'`: **Toggle feature mode live** (`invariant` $\leftrightarrow$ `raw`) to observe the generalization gap in real time
-- `'m'`: Toggle **Tremor Suppression Mode** (for motor assistance)
-- `'s'`: Save current frame HUD screenshot to disk
+- Press `'t'` to toggle feature mode live (`invariant` $\leftrightarrow$ `raw`) and observe the generalization gap in real time.
+- Press `'m'` to toggle **Tremor Suppression Mode**.
 
-### 8.3 Run Benchmark Suite & Generate 4-Cell Matrix
-```bash
-python scripts/benchmark_pipeline.py
-```
-Outputs the complete 2x2 Generalization Matrix and Disaggregated Latency Profiling table into `BENCHMARK_REPORT.md`.
-
-### 8.4 Run Automated Unit Tests
+### 10.4 Run Automated Verification Suite (32/32 Passing)
 ```bash
 pytest tests/ -v
 ```
-Executes all 13 unit tests verifying translation, scale, and rotation invariance, 1 Euro signal damping, and state machine hysteresis transitions.
+Executes all 32 unit tests verifying translation, scale, and rotation invariance, 1 Euro signal damping, state machine hysteresis, polygon bisection, closed-fist universal gravity, thumbs-up dwell and instant release, and natural pinch ergonomics.
 
-### 8.5 Generate High-Definition Demonstration Video
+### 10.5 Generate High-Definition Video Demonstrations
 ```bash
+# Record 21-second Jedi Sandbox Demo (starts with guide, shows all features):
+python scripts/record_jedi_demo.py --output jedi_sandbox_demo.mp4 --duration 21
+
+# Record 10-second Invariant HUD pipeline demo:
 python scripts/record_demo.py --output demo_execution.mp4 --duration 10
 ```
 
 ---
 
-## 9. Strategic Market Analysis & Real-World Verticals
+## 11. Strategic Market Analysis & Real-World Verticals
 
 The global touchless sensing and gesture recognition market is projected to reach **USD 165.49 billion by 2034** (19.04% CAGR), driven by strict clinical hygiene protocols, ADAS distraction standards, and public kiosk contactless adoption.
 
@@ -363,10 +421,11 @@ Unlike cloud-based computer vision APIs that charge on a per-minute or per-frame
 
 ---
 
-## 10. Deliverables Manifest
+## 12. Deliverables Manifest
 
-- **Core Package**: `mhands/` (`core/`, `pipeline/`, `benchmark/`, `data/`)
-- **Interactive Scripts**: `scripts/run_live.py`, `scripts/benchmark_pipeline.py`, `scripts/train_models.py`, `scripts/record_demo.py`
-- **Validation Suite**: `tests/test_geometry.py`, `tests/test_filters.py`, `tests/test_state_machine.py`, `tests/test_pipeline.py`
+- **Core Package**: `mhands/` (`core/`, `pipeline/`, `sandbox/`, `benchmark/`, `data/`)
+- **Interactive Demonstrators**: `scripts/run_jedi_sandbox.py`, `scripts/run_live.py`, `scripts/record_jedi_demo.py`, `scripts/benchmark_pipeline.py`
+- **Automated Test Suite**: 32 unit tests across `tests/` (`test_geometry.py`, `tests/test_filters.py`, `tests/test_state_machine.py`, `tests/test_physics_space.py`, `tests/test_polygon_cutter.py`, `tests/test_telekinesis.py`)
+- **Visual Assets & Media**: High-res screenshots in `assets/`, demonstration video in `jedi_sandbox_demo_h264.mp4`
 - **Documentation & Benchmarks**: `README.md`, `BENCHMARK_REPORT.md`
-- **Dependency Locks**: `requirements.txt`, `pyproject.toml`
+- **Dependencies & Packaging**: `requirements.txt`, `pyproject.toml`
