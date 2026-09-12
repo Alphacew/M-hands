@@ -73,6 +73,7 @@ def main():
     cv2.resizeWindow(window_name, w, h)
 
     print("\nControls:")
+    print("  Thumbs Up : Show Holographic On-Screen Guide (or press 'h')")
     print("  '1' - '5' : Switch Environment (Castle, Ragdolls, Fluids, Zero-G, Bridge)")
     print("  'r'       : Reset current environment")
     print("  'a'       : Toggle Transparent Camera Feed (AR) / Dark Holo-Chamber")
@@ -95,12 +96,16 @@ def main():
             if not ret or frame is None:
                 continue
 
+            # Mirror flip frame horizontally for natural intuitive hand-eye coordination
+            frame = cv2.flip(frame, 1)
+            if frame.shape[1] != w or frame.shape[0] != h:
+                frame = cv2.resize(frame, (w, h))
+
             # Process both hands
             hands = landmarker.process_multi(frame)
 
-            # Update telekinesis for each detected hand
-            for hand in hands:
-                controller.update_hand(hand, screen_w=w, screen_h=h, timestamp=t_now)
+            # Update telekinesis for detected hands (immediately clears state for absent hands)
+            controller.update_hands(hands, screen_w=w, screen_h=h, timestamp=t_now)
 
             # Update animations & step physics simulation (120 Hz internal)
             controller.update_effects(dt)
@@ -122,6 +127,8 @@ def main():
 
             if key in [ord("q"), 27]:
                 break
+            elif key in [ord("h"), ord("?")]:
+                controller.manual_guide = not controller.manual_guide
             elif key == ord("1"):
                 load_func, current_env_name = env_map["castle"]
                 load_func(physics)

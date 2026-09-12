@@ -29,7 +29,7 @@ from mhands.core.geometry import INDEX_TIP, THUMB_TIP, WRIST
 def parse_args():
     parser = argparse.ArgumentParser(description="Record Jedi Sandbox Demo Video")
     parser.add_argument("--output", type=str, default="jedi_sandbox_demo.mp4", help="Output video path")
-    parser.add_argument("--duration", type=int, default=12, help="Duration in seconds (default: 12)")
+    parser.add_argument("--duration", type=int, default=15, help="Duration in seconds (default: 15)")
     parser.add_argument("--fps", type=int, default=30, help="Output FPS (default: 30)")
     return parser.parse_args()
 
@@ -68,6 +68,13 @@ def main():
     dt = 1.0 / args.fps
     t_sim = 0.0
 
+    # Camera background frame (subtle laboratory room gradient to showcase transparent AR mode)
+    bg_frame = np.zeros((h, w, 3), dtype=np.uint8)
+    for y in range(h):
+        val = int(22 + 25 * (1.0 - y / h))
+        bg_frame[y, :] = (val, val + 4, val + 10)
+    bg_frame[::40, ::40] = (70, 75, 85)
+
     # Locate arch keystone or a prominent block to grab
     keystone_body = None
     for b in physics.space.bodies:
@@ -77,45 +84,48 @@ def main():
     if keystone_body is None:
         keystone_body = [b for b in physics.space.bodies if b.body_type == pymunk.Body.DYNAMIC][0]
 
+    def translate_hand(lms_in: np.ndarray, target_x: float, target_y: float) -> np.ndarray:
+        lms = lms_in.copy()
+        cur_center = np.mean(lms[[0, 5, 9, 13, 17], :2], axis=0)
+        lms[:, 0] += (target_x - cur_center[0])
+        lms[:, 1] += (target_y - cur_center[1])
+        return lms
+
     for frame_idx in range(total_frames):
         t_sim += dt
         phase = t_sim / args.duration  # [0.0, 1.0]
 
-        # Stage 1: (0.0 - 0.25) -> Telekinetic Pinch & Elastic Spring Wrecking Ball
-        if phase < 0.25:
-            # Trajectory moving towards block then swinging up
-            progress = phase / 0.25
+        # Stage 1: (0.00 - 0.20) -> Telekinetic Pinch & Elastic Spring Wrecking Ball
+        if phase < 0.20:
+            progress = phase / 0.20
             target_pt = keystone_body.position
             hand_x = 0.35 + 0.15 * np.sin(progress * np.pi)
             hand_y = 0.65 - 0.35 * progress
 
-            lms = generator.generate_canonical_pose("Open_Palm")
-            # Force tight pinch
-            lms[:, 0] = hand_x
-            lms[:, 1] = hand_y
-            # Move thumb tip close to index tip
-            lms[THUMB_TIP] = lms[INDEX_TIP] + np.array([0.01, 0.01, 0.0])
+            raw_lms = generator.generate_canonical_pose("Open_Palm")
+            lms = translate_hand(raw_lms, hand_x, hand_y)
+            # Pinch: move thumb tip directly adjacent to index tip
+            lms[THUMB_TIP, :2] = lms[INDEX_TIP, :2] + np.array([0.008, 0.008])
 
             hand = HandData(landmarks=lms, handedness="Right", confidence=0.98)
             controller.update_hand(hand, screen_w=w, screen_h=h, timestamp=t_sim)
             env_name = "Telekinetic Spring Grip & Tension Control"
 
-        # Stage 2: (0.25 - 0.50) -> Momentum Fling & Explosive Force Push
-        elif phase < 0.50:
-            progress = (phase - 0.25) / 0.25
+        # Stage 2: (0.20 - 0.40) -> Momentum Fling & Explosive Force Push
+        elif phase < 0.40:
+            progress = (phase - 0.20) / 0.20
             # Hand whips across to x = 0.75 and snaps open
             hand_x = 0.50 + 0.30 * progress
             hand_y = 0.35 + 0.10 * np.sin(progress * np.pi)
 
-            lms = generator.generate_canonical_pose("Open_Palm")
-            lms[:, 0] = hand_x
-            lms[:, 1] = hand_y
+            raw_lms = generator.generate_canonical_pose("Open_Palm")
+            lms = translate_hand(raw_lms, hand_x, hand_y)
 
             hand = HandData(landmarks=lms, handedness="Right", confidence=0.99)
             controller.update_hand(hand, screen_w=w, screen_h=h, timestamp=t_sim)
 
             # Trigger a massive force push halfway through
-            if 0.35 < phase < 0.37:
+            if 0.28 < phase < 0.30:
                 from mhands.sandbox.telekinesis import ActiveShockwave
                 palm_pt = Vec2d(hand_x * w, hand_y * h)
                 for b in physics.space.bodies:
@@ -129,29 +139,44 @@ def main():
 
             env_name = "Kinetic Momentum Fling & Force Push Blast"
 
-        # Stage 3: (0.50 - 0.75) -> Gravitational Singularity ("Force Pull")
-        elif phase < 0.75:
-            progress = (phase - 0.50) / 0.25
-            hand_x = 0.50 + 0.10 * np.sin(progress * 2 * np.pi)
+        # Stage 3: (0.40 - 0.60) -> Gravitational Singularity (Closed Fist)
+        elif phase < 0.60:
+            progress = (phase - 0.40) / 0.20
+            hand_x = 0.50 + 0.08 * np.sin(progress * 2 * np.pi)
             hand_y = 0.45
 
-            lms = generator.generate_canonical_pose("Closed_Fist")
-            lms[:, 0] = hand_x
-            lms[:, 1] = hand_y
+            raw_lms = generator.generate_canonical_pose("Closed_Fist")
+            lms = translate_hand(raw_lms, hand_x, hand_y)
 
             hand = HandData(landmarks=lms, handedness="Right", confidence=0.98)
             controller.update_hand(hand, screen_w=w, screen_h=h, timestamp=t_sim)
-            env_name = "Gravitational Singularity Vortex (Force Pull)"
+            env_name = "Gravitational Singularity Vortex (Closed Fist Gravity)"
 
-        # Stage 4: (0.75 - 1.00) -> Victory Plasma Bisection Laser Blade
+        # Stage 4: (0.60 - 0.80) -> Thumbs-Up On-Screen Guide
+        elif phase < 0.80:
+            progress = (phase - 0.60) / 0.20
+            hand_x = 0.16
+            hand_y = 0.55
+
+            raw_fist = generator.generate_canonical_pose("Closed_Fist")
+            lms = translate_hand(raw_fist, hand_x, hand_y)
+            # Extend thumb upward for Thumbs-Up
+            lms[THUMB_TIP] = lms[WRIST] + np.array([-0.03, -0.18, 0.0])
+            lms[2] = lms[WRIST] + np.array([-0.02, -0.08, 0.0])
+            lms[3] = lms[WRIST] + np.array([-0.025, -0.13, 0.0])
+
+            hand = HandData(landmarks=lms, handedness="Right", confidence=0.99)
+            controller.update_hand(hand, screen_w=w, screen_h=h, timestamp=t_sim)
+            env_name = "On-Screen Holographic Manual (Thumbs-Up Pose)"
+
+        # Stage 5: (0.80 - 1.00) -> Victory Plasma Bisection Laser Blade
         else:
-            progress = (phase - 0.75) / 0.25
+            progress = (phase - 0.80) / 0.20
             hand_x = 0.30 + 0.45 * progress
             hand_y = 0.40 + 0.15 * np.cos(progress * np.pi)
 
-            lms = generator.generate_canonical_pose("Victory")
-            lms[:, 0] = hand_x
-            lms[:, 1] = hand_y
+            raw_lms = generator.generate_canonical_pose("Victory")
+            lms = translate_hand(raw_lms, hand_x, hand_y)
 
             hand = HandData(landmarks=lms, handedness="Right", confidence=0.99)
             controller.update_hand(hand, screen_w=w, screen_h=h, timestamp=t_sim)
@@ -166,6 +191,8 @@ def main():
             physics=physics,
             controller=controller,
             hands=[hand],
+            camera_frame=bg_frame,
+            ar_mode=True,
             environment_name=env_name,
             fps=float(args.fps),
         )

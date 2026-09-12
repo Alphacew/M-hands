@@ -128,9 +128,19 @@ def slice_convex_polygon(
     mass_a = orig_mass * (area_a / total_area)
     mass_b = orig_mass * (area_b / total_area)
 
-    # Convert vertices to local coordinates relative to new centroids
-    local_a = [v - cent_a for v in poly_a_verts]
-    local_b = [v - cent_b for v in poly_b_verts]
+    # Filter duplicate vertices
+    def clean_vertices(verts: List[Vec2d]) -> List[Vec2d]:
+        cleaned: List[Vec2d] = []
+        for v in verts:
+            if not any((v - cv).length < 2.0 for cv in cleaned):
+                cleaned.append(v)
+        return cleaned
+
+    local_a = clean_vertices([v - cent_a for v in poly_a_verts])
+    local_b = clean_vertices([v - cent_b for v in poly_b_verts])
+
+    if len(local_a) < 3 or len(local_b) < 3:
+        return None
 
     # Ensure counter-clockwise winding for Pymunk
     if is_clockwise(local_a):
@@ -138,28 +148,32 @@ def slice_convex_polygon(
     if is_clockwise(local_b):
         local_b.reverse()
 
-    # Create daughter body A
-    moment_a = pymunk.moment_for_poly(mass_a, local_a)
-    body_a = pymunk.Body(mass_a, moment_a)
-    body_a.position = cent_a
-    body_a.velocity = body.velocity + normal * burst_speed
-    body_a.angular_velocity = body.angular_velocity
+    try:
+        # Create daughter body A
+        moment_a = pymunk.moment_for_poly(mass_a, local_a)
+        body_a = pymunk.Body(mass_a, moment_a)
+        body_a.position = cent_a
+        body_a.velocity = body.velocity + normal * burst_speed
+        body_a.angular_velocity = body.angular_velocity
 
-    shape_a = pymunk.Poly(body_a, local_a)
-    shape_a.friction = poly_shape.friction
-    shape_a.elasticity = poly_shape.elasticity
-    shape_a.color = getattr(poly_shape, "color", (80, 180, 240))
+        shape_a = pymunk.Poly(body_a, local_a)
+        shape_a.friction = poly_shape.friction
+        shape_a.elasticity = poly_shape.elasticity
+        shape_a.color = getattr(poly_shape, "color", (80, 180, 240))
 
-    # Create daughter body B
-    moment_b = pymunk.moment_for_poly(mass_b, local_b)
-    body_b = pymunk.Body(mass_b, moment_b)
-    body_b.position = cent_b
-    body_b.velocity = body.velocity - normal * burst_speed
-    body_b.angular_velocity = body.angular_velocity
+        # Create daughter body B
+        moment_b = pymunk.moment_for_poly(mass_b, local_b)
+        body_b = pymunk.Body(mass_b, moment_b)
+        body_b.position = cent_b
+        body_b.velocity = body.velocity - normal * burst_speed
+        body_b.angular_velocity = body.angular_velocity
 
-    shape_b = pymunk.Poly(body_b, local_b)
-    shape_b.friction = poly_shape.friction
-    shape_b.elasticity = poly_shape.elasticity
-    shape_b.color = getattr(poly_shape, "color", (80, 180, 240))
+        shape_b = pymunk.Poly(body_b, local_b)
+        shape_b.friction = poly_shape.friction
+        shape_b.elasticity = poly_shape.elasticity
+        shape_b.color = getattr(poly_shape, "color", (80, 180, 240))
 
-    return (body_a, shape_a), (body_b, shape_b), intersections
+        return (body_a, shape_a), (body_b, shape_b), intersections
+    except Exception:
+        # Fallback gracefully if vertex geometry is non-convex
+        return None

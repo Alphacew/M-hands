@@ -66,3 +66,42 @@ def test_slow_motion_decay():
     # Advance 0.6 seconds
     ps.step(0.6)
     assert ps.time_scale == 1.0
+
+
+def test_sandbox_visualizer_rendering():
+    import numpy as np
+    from pathlib import Path
+    from mhands.sandbox.visualizer_2d import SandboxVisualizer
+    from mhands.sandbox.telekinesis import TelekineticController
+    from mhands.pipeline.classifier import GestureClassifier
+    from mhands.pipeline.landmarker import HandData
+    from mhands.data.synthetic_generator import SyntheticHandGenerator
+
+    ps = PhysicsSpace(width=800, height=600)
+    ps.add_box(400, 300, 50, 50, mass=2.0)
+
+    clf = GestureClassifier.load(Path("models/invariant_svm.joblib"))
+    ctrl = TelekineticController(physics=ps, classifier=clf)
+    viz = SandboxVisualizer(width=800, height=600)
+
+    gen = SyntheticHandGenerator(random_seed=10)
+    lms = gen.generate_canonical_pose("Open_Palm")
+    hands = [HandData(landmarks=lms, handedness="Right", confidence=0.98)]
+
+    # Test AR mode transparent overlay with camera frame
+    fake_cam = np.full((600, 800, 3), 120, dtype=np.uint8)
+    rendered = viz.render(
+        physics=ps,
+        controller=ctrl,
+        hands=hands,
+        camera_frame=fake_cam,
+        ar_mode=True,
+        environment_name="Test_Env",
+        fps=60.0,
+    )
+
+    assert rendered.shape == (600, 800, 3)
+    assert rendered.dtype == np.uint8
+    # Ensure visualizer drew onto the frame
+    assert not np.array_equal(rendered, fake_cam)
+
