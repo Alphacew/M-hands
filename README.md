@@ -30,34 +30,36 @@ Standard monocular hand keypoint pipelines (e.g., MediaPipe Hands) predict twent
 ```mermaid
 flowchart TD
     subgraph Capture ["1. Input & Acquisition"]
-        CAM[Video Source /dev/video0] --> TS[ThreadedCamera Stream]
-        TS --> PRE[Adaptive Illumination Normalizer\n(YCrCb + CLAHE)]
+        CAM["Video Source /dev/video0"] --> TS["ThreadedCamera Stream"]
+        TS --> PRE["Adaptive Illumination Normalizer<br/>(YCrCb + CLAHE)"]
     end
 
     subgraph LandmarkPipeline ["2. Anatomical Extraction & Signal Damping"]
-        PRE --> MP[MediaPipe HandLandmarker\n(21 3D Points, R^63)]
-        MP --> FLT[MultiPointOneEuroFilter\n(Adaptive Jitter Damping)]
-        FLT --> CAL[Dynamic Anatomical Calibrator\n(Joint Range Normalization)]
+        PRE --> MP["MediaPipe HandLandmarker<br/>(21 3D Points, R^63)"]
+        MP --> FLT["MultiPointOneEuroFilter<br/>(Adaptive Jitter Damping)"]
+        FLT --> CAL["Dynamic Anatomical Calibrator<br/>(Joint Range Normalization)"]
     end
 
     subgraph FeatureGeometry ["3. Invariant Feature Engineering"]
-        CAL --> MIR[Bilateral Hand Mirror\n(Left/Right Parity)]
-        MIR --> GEO[extract_invariant_features\nOrigin Wrist p0 | Scale d_ref | Joint Angles]
+        CAL --> MIR["Bilateral Hand Mirror<br/>(Left/Right Parity)"]
+        MIR --> GEO["extract_invariant_features<br/>Origin Wrist p0 &bull; Scale d_ref &bull; Joint Angles"]
         GEO --> PHI["Phi in R^8 Manifold"]
     end
 
     subgraph InferenceFSM ["4. Decision Logic & State Machine"]
-        PHI --> CLF[GestureClassifier\nStandardScaler + SVC/RF]
-        CLF --> PROB[Class Probabilities P]
-        PROB --> FSM[Interaction State Machine\nHysteresis + Dwell-Click Timing]
+        PHI --> CLF["GestureClassifier<br/>StandardScaler + SVC/RF"]
+        CLF --> PROB["Class Probabilities P"]
+        PROB --> FSM["Interaction State Machine<br/>Hysteresis + Dwell-Click Timing"]
     end
 
     subgraph OutputAction ["5. Real-Time HUD & Event Dispatch"]
-        FSM --> EVT{System State}
-        EVT -->|Dwell Reached| CLK[CLICK_EXECUTE / Selection Event]
-        EVT -->|Tracking| SLD[Continuous Spatial Slider Control]
-        EVT -->|Confidence Drop| REL[RELEASE_EXECUTE]
-        CLK & SLD & REL --> HUD[Cyber-Medical HUD Visualizer\n(Zero UI Overhead, OpenCV Blit)]
+        FSM --> EVT{"System State"}
+        EVT -->|Dwell Reached| CLK["CLICK_EXECUTE / Selection Event"]
+        EVT -->|Tracking| SLD["Continuous Spatial Slider Control"]
+        EVT -->|Confidence Drop| REL["RELEASE_EXECUTE"]
+        CLK --> HUD["Cyber-Medical HUD Visualizer<br/>(Zero UI Overhead, OpenCV Blit)"]
+        SLD --> HUD
+        REL --> HUD
     end
 ```
 
