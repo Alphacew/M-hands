@@ -1,4 +1,3 @@
-[unified_production_readme.md](https://github.com/user-attachments/files/32146873/unified_production_readme.md)
 # M-Hands: Geometrically Invariant Real-Time Hand Gesture Interaction Framework
 
 [![Python 3.10](https://img.shields.io/badge/Python-3.10%20%7C%203.11-blue.svg)](https://www.python.org/)
