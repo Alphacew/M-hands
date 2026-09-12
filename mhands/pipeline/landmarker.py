@@ -5,7 +5,8 @@ Encapsulates the monocular hand keypoint inference pipeline with optimized
 frame conversion, handedness classification, and landmark extraction.
 """
 
-from typing import Optional, Tuple, Any, Dict
+from dataclasses import dataclass
+from typing import Optional, Tuple, Any, Dict, List
 import cv2
 import mediapipe as mp
 import numpy as np
@@ -13,19 +14,27 @@ import numpy as np
 from mhands.core.geometry import landmarks_to_numpy
 
 
+@dataclass
+class HandData:
+    landmarks: np.ndarray  # (21, 3)
+    handedness: str        # 'Right' or 'Left'
+    confidence: float      # [0.0, 1.0]
+
+
 class HandLandmarkerEngine:
     """
-    High-performance wrapper for MediaPipe Hands pipeline.
+    High-performance wrapper for MediaPipe Hands pipeline supporting single and dual hands.
     """
 
     def __init__(
         self,
         static_image_mode: bool = False,
-        max_num_hands: int = 1,
-        min_detection_confidence: float = 0.7,
-        min_tracking_confidence: float = 0.6,
+        max_num_hands: int = 2,
+        min_detection_confidence: float = 0.65,
+        min_tracking_confidence: float = 0.55,
         model_complexity: int = 1,
     ):
+        self.max_num_hands = max_num_hands
         self.mp_hands = mp.solutions.hands
         self.hands = self.mp_hands.Hands(
             static_image_mode=static_image_mode,
@@ -35,43 +44,47 @@ class HandLandmarkerEngine:
             model_complexity=model_complexity,
         )
 
+    def process_multi(self, frame_bgr: np.ndarray) -> List[HandData]:
+        """
+        Executes landmark inference, returning all detected hands (up to max_num_hands).
+        """
+        if frame_bgr is None or frame_bgr.size == 0:
+            return []
+
+        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
+        frame_rgb.flags.writeable = False
+
+        results = self.hands.process(frame_rgb)
+        if not results.multi_hand_landmarks:
+            return []
+
+        hands_list = []
+        for i, lm_container in enumerate(results.multi_hand_landmarks):
+            lms_np = landmarks_to_numpy(lm_container)
+            handedness = "Right"
+            confidence = 0.90
+
+            if results.multi_handedness and i < len(results.multi_handedness):
+                cls_info = results.multi_handedness[i].classification[0]
+                handedness = cls_info.label
+                confidence = float(cls_info.score)
+
+            hands_list.append(HandData(landmarks=lms_np, handedness=handedness, confidence=confidence))
+
+        return hands_list
+
     def process(
         self,
         frame_bgr: np.ndarray,
     ) -> Tuple[Optional[np.ndarray], Optional[str], float]:
         """
-        Executes landmark inference on an input BGR frame.
-        
-        Returns:
-            landmarks: (21, 3) float32 NumPy array or None if no hand detected.
-            handedness: 'Right' or 'Left' (or None)
-            confidence: float confidence score [0.0, 1.0]
+        Backward compatible single-hand extraction (returns primary detected hand).
         """
-        if frame_bgr is None or frame_bgr.size == 0:
+        hands = self.process_multi(frame_bgr)
+        if not hands:
             return None, None, 0.0
-
-        # Convert BGR to RGB (MediaPipe requires RGB)
-        frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
-        # Mark image as not writeable to pass by reference for speed
-        frame_rgb.flags.writeable = False
-
-        results = self.hands.process(frame_rgb)
-
-        if not results.multi_hand_landmarks:
-            return None, None, 0.0
-
-        primary_hand_landmarks = results.multi_hand_landmarks[0]
-        landmarks_np = landmarks_to_numpy(primary_hand_landmarks)
-
-        handedness = "Right"
-        confidence = 0.90
-
-        if results.multi_handedness and len(results.multi_handedness) > 0:
-            classification = results.multi_handedness[0].classification[0]
-            handedness = classification.label
-            confidence = float(classification.score)
-
-        return landmarks_np, handedness, confidence
+        primary = hands[0]
+        return primary.landmarks, primary.handedness, primary.confidence
 
     def close(self) -> None:
         self.hands.close()

@@ -225,7 +225,54 @@ mhands/
 
 ---
 
-## 7. Environment & Runtime Configuration
+## 7. The "Jedi" 2D Telekinetic Physics Sandbox
+
+Beyond traditional gesture menus, M-Hands includes an interactive telekinetic simulation chamber where physical rigid bodies, articulated ragdolls, and particle fluids react directly to natural hand kinematics with zero perceptible input lag.
+
+```
+       [Natural Hand Kinematics]
+      /           |            \
+ [Pinch Aperture] [Flexion Angles] [Palm Orientation]
+       |                  |                |
+  (Variable Tension   (Kinetic Push /    (Angular Torque /
+   Elastic Spring)     Singularity Pull)  Rotational Weld)
+       \                  |                /
+        ▼                 ▼               ▼
+      [Chipmunk2D / Pymunk Physics Engine (120 Hz)]
+                          │
+   ┌──────────────────────┼──────────────────────┐
+   ▼                      ▼                      ▼
+[Rigid Body Castle]  [Ragdoll Dummies]  [Viscous Fluid Vats]
+```
+
+### 7.1 Telekinetic Capabilities & Kinematic Coupling
+- **Elastic Force Grip (Variable Tension Springs)**: Pinching the thumb and index finger ($r_{\text{aperture}} < 0.35$) latches a virtual damped spring onto the nearest rigid body. Gently closing tightens spring stiffness ($k \to 12,000\text{ N/m}$), snapping the object rigidly to the index fingertip, while keeping a looser pinch lets the object swing with momentum like a wrecking ball or yo-yo.
+- **True Momentum Flinging**: Opening the pinch instantly severs the constraint. The 1 Euro filter dynamic velocity coefficient ($\beta = 0.007$) bypasses low-pass filtering during rapid motion, so fast wrist flicks transfer raw human acceleration, hurling blocks across the screen.
+- **Area-of-Effect (AoE) Kinetic Shockwave ("Force Push")**: Snapping the hand from a curled posture into an open palm triggers an instantaneous radial blast wave, launching objects outward with expanding concentric refraction ripples.
+- **Gravitational Singularity ("Force Pull")**: Curling all five fingers into a closed fist activates an inward gravitational attractor at the palm's center, swirling debris and ragdolls into a dense orbiting cluster.
+- **Spatial Stasis ("Force Freeze")**: Holding a flat palm stationary across the 250 ms dwell threshold locks the local physical universe in place, freezing falling projectiles mid-air.
+- **Plasma Bisection Blade**: Projecting the Victory/Peace gesture casts a slicing energy beam that splits convex polygons along the cutting plane, dividing crates and beams in two with bright molten sparks!
+
+### 7.2 Interactive Toybox Environments
+1. **Jenga Castle & Keystone Arch** (`Key 1`): Destructible masonry arches, structural columns, and domino towers.
+2. **Articulated Ragdoll Arena** (`Key 2`): Multi-jointed humanoid test dummies with physical joint limits.
+3. **Granular Fluid Vat** (`Key 3`): 120+ viscous fluid particles with splash dynamics and hand paddle sweeps.
+4. **Zero-G Asteroids** (`Key 4`): Microgravity orbital celestial playground.
+5. **Seismic Bridge** (`Key 5`): Pinned truss bridge spanning a chasm under rolling vehicular load.
+
+![Jedi Force Push Shockwave](assets/jedi_force_push.png)
+
+```bash
+# Launch interactive Jedi sandbox on live webcam
+python scripts/run_jedi_sandbox.py --camera 0
+
+# Record 12-second high-definition demo video
+python scripts/record_jedi_demo.py --output jedi_sandbox_demo.mp4 --duration 12
+```
+
+---
+
+## 8. Environment & Runtime Configuration
 
 Runtime behavior, model confidence thresholds, and telemetry levels can be configured via a `.env` file in the project root:
 
