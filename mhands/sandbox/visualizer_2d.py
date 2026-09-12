@@ -55,10 +55,13 @@ class SandboxVisualizer:
         """
         w, h = self.width, self.height
 
-        # 1. Base Canvas
+        # 1. Base Canvas: Transparent Camera Feed (AR Mode)
         if ar_mode and camera_frame is not None:
-            # AR Mode: Dim webcam feed slightly to make physics pop
-            canvas = cv2.addWeighted(camera_frame, 0.45, np.zeros_like(camera_frame), 0.55, 0)
+            # Clean transparent webcam background - user sees hands and environment directly
+            if camera_frame.shape[1] != w or camera_frame.shape[0] != h:
+                canvas = cv2.resize(camera_frame, (w, h))
+            else:
+                canvas = camera_frame.copy()
         else:
             # Holographic Sci-Fi Chamber with Isometric Grid
             canvas = np.full((h, w, 3), COLOR_CHAMBER_BG, dtype=np.uint8)
@@ -69,8 +72,8 @@ class SandboxVisualizer:
             for y in range(0, h, grid_spacing):
                 cv2.line(canvas, (0, y), (w, y), COLOR_GRID_LINE, 1)
 
-        # 2. Render Physics Bodies
-        self._render_physics_bodies(canvas, physics)
+        # 2. Render Semi-Transparent Physics Bodies (visible hands behind pieces)
+        self._render_physics_bodies(canvas, physics, alpha=0.72 if ar_mode else 0.95)
 
         # 3. Render Atmospheric Shockwaves
         self._render_shockwaves(canvas, controller.active_shockwaves)
@@ -101,11 +104,12 @@ class SandboxVisualizer:
 
         return canvas
 
-    def _render_physics_bodies(self, img: np.ndarray, physics: PhysicsSpace) -> None:
-        """Draws all rigid bodies in the simulation with stress heatmaps."""
+    def _render_physics_bodies(self, img: np.ndarray, physics: PhysicsSpace, alpha: float = 0.72) -> None:
+        """Draws all rigid bodies with semi-transparent crystal fills and crisp neon outlines."""
+        overlay = img.copy()
+
         for body in physics.space.bodies:
             is_static = (body.body_type == pymunk.Body.STATIC)
-            # Estimate body kinetic stress for FEA heatmap
             v_len = body.velocity.length
             stress_ratio = min(1.0, v_len / 450.0) if not is_static else 0.0
 
@@ -128,22 +132,48 @@ class SandboxVisualizer:
                     verts = [body.local_to_world(v) for v in shape.get_vertices()]
                     pts_px = np.array([[int(v.x), int(v.y)] for v in verts], dtype=np.int32)
                     if len(pts_px) >= 3:
-                        cv2.fillPoly(img, [pts_px], color)
-                        border_col = (255, 255, 255) if is_static else (40, 40, 50)
-                        cv2.polylines(img, [pts_px], True, border_col, 1, cv2.LINE_AA)
+                        cv2.fillPoly(overlay, [pts_px], color)
 
                 elif isinstance(shape, pymunk.Circle):
                     center_px = (int(body.position.x), int(body.position.y))
                     rad_px = int(shape.radius)
-                    cv2.circle(img, center_px, rad_px, color, -1, cv2.LINE_AA)
-                    cv2.circle(img, center_px, rad_px, (40, 40, 50), 1, cv2.LINE_AA)
-                    # Orientation spoke
+                    cv2.circle(overlay, center_px, rad_px, color, -1, cv2.LINE_AA)
+
+                elif isinstance(shape, pymunk.Segment):
+                    p1 = body.local_to_world(shape.a)
+                    p2 = body.local_to_world(shape.b)
+                    p1_px = (int(p1.x), int(p1.y))
+                    p2_px = (int(p2.x), int(p2.y))
+                    radius = max(2, int(shape.radius))
+                    cv2.line(overlay, p1_px, p2_px, color, radius * 2, cv2.LINE_AA)
+
+        # Alpha blend fills onto base canvas
+        cv2.addWeighted(overlay, alpha, img, 1.0 - alpha, 0, img)
+
+        # Draw crisp high-contrast outlines and orientation spokes
+        for body in physics.space.bodies:
+            is_static = (body.body_type == pymunk.Body.STATIC)
+            for shape in body.shapes:
+                if shape in physics.boundaries:
+                    continue
+
+                if isinstance(shape, pymunk.Poly):
+                    verts = [body.local_to_world(v) for v in shape.get_vertices()]
+                    pts_px = np.array([[int(v.x), int(v.y)] for v in verts], dtype=np.int32)
+                    if len(pts_px) >= 3:
+                        border_col = (255, 255, 255) if is_static else (220, 245, 255)
+                        cv2.polylines(img, [pts_px], True, border_col, 2, cv2.LINE_AA)
+
+                elif isinstance(shape, pymunk.Circle):
+                    center_px = (int(body.position.x), int(body.position.y))
+                    rad_px = int(shape.radius)
+                    cv2.circle(img, center_px, rad_px, (220, 245, 255), 2, cv2.LINE_AA)
                     angle = body.angle
                     spoke_end = (
                         int(center_px[0] + rad_px * np.cos(angle)),
                         int(center_px[1] + rad_px * np.sin(angle)),
                     )
-                    cv2.line(img, center_px, spoke_end, (20, 20, 20), 1, cv2.LINE_AA)
+                    cv2.line(img, center_px, spoke_end, (255, 255, 255), 1, cv2.LINE_AA)
 
                 elif isinstance(shape, pymunk.Segment):
                     p1 = body.local_to_world(shape.a)

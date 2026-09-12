@@ -27,7 +27,7 @@ def parse_args():
     parser.add_argument("--camera", type=int, default=0, help="Camera device index (default: 0)")
     parser.add_argument("--model-path", type=str, default="models/invariant_svm.joblib", help="Classifier model path")
     parser.add_argument("--environment", type=str, default="castle", choices=["castle", "ragdoll", "fluid", "zerog", "bridge"])
-    parser.add_argument("--ar", action="store_true", help="Start in Augmented Reality mode with camera feed")
+    parser.add_argument("--chamber", action="store_true", help="Start in dark holographic chamber mode instead of transparent camera feed")
     return parser.parse_args()
 
 
@@ -75,12 +75,12 @@ def main():
     print("\nControls:")
     print("  '1' - '5' : Switch Environment (Castle, Ragdolls, Fluids, Zero-G, Bridge)")
     print("  'r'       : Reset current environment")
-    print("  'a'       : Toggle AR Camera View / Sci-Fi Holo-Chamber")
+    print("  'a'       : Toggle Transparent Camera Feed (AR) / Dark Holo-Chamber")
     print("  's'       : Trigger Slow-Motion Time Dilation (0.2x)")
     print("  'p'       : Capture Screenshot")
     print("  'q' / ESC : Exit application\n")
 
-    ar_mode = args.ar
+    ar_mode = not args.chamber
     last_t = time.perf_counter()
     fps = 60.0
 
